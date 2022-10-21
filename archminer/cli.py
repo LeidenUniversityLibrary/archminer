@@ -9,13 +9,21 @@ from .layout import relative_coords
 
 @click.group(chain=True, invoke_without_command=True)
 @click.option('--out-file', '-o', type=click.Path(path_type=pathlib.Path))
+@click.option('--from-page', type=int)
+@click.option('--to-page', type=int)
 @click.argument('in-file', type=click.Path(exists=True, file_okay=True, path_type=pathlib.Path))
-def cli(in_file, out_file):
+def cli(in_file, out_file, from_page, to_page):
     """Mine the PDF!"""
     pass
 
 @cli.result_callback()
-def process(processors, in_file, out_file):
+def process(processors, in_file, out_file, from_page, to_page):
+    if from_page is not None and from_page > 0:
+        processors.append(_high_pass(from_page))
+    if to_page is not None and to_page > 0:
+        processors.append(_low_pass(to_page))
+    if from_page is not None and to_page is not None and to_page < from_page:
+        raise ValueError("to-page must be higher than from-page")
     iterator = (_wrap_page_in_dict(page) for page in extract_pages(in_file))
     for processor in processors:
         iterator = processor(iterator)
@@ -50,6 +58,23 @@ def write_page_numbers():
             page_dict["output"] += f'---{page_dict["page"].pageid}---\n'
             yield page_dict
     return page_number_writer
+
+def _high_pass(start_page: int):
+    """Return an iterator that only returns pages starting at start page."""
+    def page_filter(iterator):
+        for page_dict in iterator:
+            if page_dict["page"].pageid >= start_page:
+                yield page_dict
+    return page_filter
+
+def _low_pass(end_page: int):
+    """Return an iterator that stops the iteration at the given end page."""
+    def page_filter(iterator):
+        for page_dict in iterator:
+            if page_dict["page"].pageid > end_page:
+                return
+            yield page_dict
+    return page_filter
 
 def _wrap_page_in_dict(page):
     return {"page": page, "output": ""}
