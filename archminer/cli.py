@@ -33,22 +33,6 @@ def process(processors, in_file, out_file, from_page, to_page):
     with out_file.open('w') as out_fh:
         for page_dict in iterator:
             out_fh.write(page_dict["output"])
-            page_layout = page_dict["page"]
-            abs_bottoms = []
-            rel_bottoms = []
-            for element in page_layout:
-                if isinstance(element, LTTextBoxHorizontal):
-                    rel_left, rel_bottom, rel_width, rel_height = relative_coords(element.bbox, page_layout.bbox)
-                    abs_bottoms.append(element.bbox[1])
-                    rel_bottoms.append(rel_bottom)
-                    if rel_bottom >= 0.87 or rel_bottom <= 0.095:
-                        out_fh.write(element.get_text() + " ")
-                        out_fh.write(str(element.bbox) + " ")
-                        out_fh.write(str(relative_coords(element.bbox, page_layout.bbox)) + "\n")
-            if len(abs_bottoms) == 0:
-                continue
-            out_fh.write(f'hi: {max(abs_bottoms)}/{max(rel_bottoms)}, lo: {min(abs_bottoms)}/{min(rel_bottoms)}\n')
-            out_fh.write(f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n')
 
 @cli.command('page-num')
 def write_page_numbers():
@@ -58,6 +42,32 @@ def write_page_numbers():
             page_dict["output"] += f'---{page_dict["page"].pageid}---\n'
             yield page_dict
     return page_number_writer
+
+@cli.command('top-bottom')
+def find_top_bottom_elements():
+    """Record y coordinates for top and bottom elements."""
+    def y_finder(iterator):
+        for page_dict in iterator:
+            page_layout = page_dict["page"]
+            abs_bottoms = []
+            # rel_bottoms = []
+            for element in page_layout:
+                if isinstance(element, LTTextBoxHorizontal):
+                    # rel_left, rel_bottom, rel_width, rel_height = relative_coords(element.bbox, page_layout.bbox)
+                    abs_bottoms.append(element.bbox[1])
+                    # rel_bottoms.append(rel_bottom)
+                    # if rel_bottom >= 0.87 or rel_bottom <= 0.095:
+                    #     out_fh.write(element.get_text() + " ")
+                    #     out_fh.write(str(element.bbox) + " ")
+                    #     out_fh.write(str(relative_coords(element.bbox, page_layout.bbox)) + "\n")
+            if len(abs_bottoms) > 0:
+                page_dict["min_bottom"] = min(abs_bottoms)
+                page_dict["max_bottom"] = max(abs_bottoms)
+                page_dict["output"] += f'hi: {max(abs_bottoms)}, lo: {min(abs_bottoms)}\n'
+            # out_fh.write(f'hi: {max(abs_bottoms)}/{max(rel_bottoms)}, lo: {min(abs_bottoms)}/{min(rel_bottoms)}\n')
+                page_dict["output"] += f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n'
+            yield page_dict
+    return y_finder
 
 def _high_pass(start_page: int):
     """Return an iterator that only returns pages starting at start page."""
