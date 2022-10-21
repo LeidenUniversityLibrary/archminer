@@ -16,12 +16,16 @@ def cli(in_file, out_file):
 
 @cli.result_callback()
 def process(processors, in_file, out_file):
+    iterator = (_wrap_page_in_dict(page) for page in extract_pages(in_file))
+    for processor in processors:
+        iterator = processor(iterator)
     if out_file is None:
         out_file = in_file.with_suffix('.txt')
 
     with out_file.open('w') as out_fh:
-        for page_num, page_layout in enumerate(extract_pages(in_file)):
-            out_fh.write(f'---{page_num + 1}---\n')
+        for page_dict in iterator:
+            out_fh.write(page_dict["output"])
+            page_layout = page_dict["page"]
             abs_bottoms = []
             rel_bottoms = []
             for element in page_layout:
@@ -37,6 +41,18 @@ def process(processors, in_file, out_file):
                 continue
             out_fh.write(f'hi: {max(abs_bottoms)}/{max(rel_bottoms)}, lo: {min(abs_bottoms)}/{min(rel_bottoms)}\n')
             out_fh.write(f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n')
+
+@cli.command('page-num')
+def write_page_numbers():
+    """Write page numbers in the output."""
+    def page_number_writer(iterator):
+        for page_dict in iterator:
+            page_dict["output"] += f'---{page_dict["page"].pageid}---\n'
+            yield page_dict
+    return page_number_writer
+
+def _wrap_page_in_dict(page):
+    return {"page": page, "output": ""}
 
 if __name__ == "__main__":
     main()
