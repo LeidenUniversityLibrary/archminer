@@ -4,7 +4,7 @@
 import click
 import pathlib
 from pdfminer.high_level import extract_pages
-from pdfminer.layout import LTTextBoxHorizontal
+from pdfminer.layout import LTTextBoxHorizontal, LAParams
 from .layout import relative_coords
 
 @click.group(chain=True, invoke_without_command=True)
@@ -24,7 +24,8 @@ def process(processors, in_file, out_file, from_page, to_page):
         processors.append(_low_pass(to_page))
     if from_page is not None and to_page is not None and to_page < from_page:
         raise ValueError("to-page must be higher than from-page")
-    iterator = (_wrap_page_in_dict(page) for page in extract_pages(in_file))
+    la_params = LAParams(boxes_flow=None)
+    iterator = (_wrap_page_in_dict(page) for page in extract_pages(in_file, laparams=la_params))
     for processor in processors:
         iterator = processor(iterator)
     if out_file is None:
@@ -68,6 +69,20 @@ def find_top_bottom_elements():
                 page_dict["output"] += f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n'
             yield page_dict
     return y_finder
+
+@cli.command('remove-top-bottom')
+def element_filter():
+    """Write texts except the elements that are at the top or bottom."""
+    def top_bottom_remover(iterator):
+        for page_dict in iterator:
+            if "min_bottom" in page_dict:
+                for element in page_dict["page"]:
+                    if isinstance(element, LTTextBoxHorizontal):
+                        # Add all text whose boundaries are between the bottom and top elements
+                        if page_dict["min_bottom"] < element.bbox[1] and element.bbox[3] < page_dict["max_bottom"]:
+                            page_dict["output"] += element.get_text() + "\n"
+            yield page_dict
+    return top_bottom_remover
 
 def _high_pass(start_page: int):
     """Return an iterator that only returns pages starting at start page."""
