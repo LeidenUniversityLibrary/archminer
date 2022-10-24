@@ -5,7 +5,7 @@ import click
 import pathlib
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTTextBoxHorizontal, LAParams
-from .layout import relative_coords
+from .layout import column_order
 
 @click.group(chain=True, invoke_without_command=True)
 @click.option('--out-file', '-o', type=click.Path(path_type=pathlib.Path))
@@ -51,36 +51,40 @@ def find_top_bottom_elements():
         for page_dict in iterator:
             page_layout = page_dict["page"]
             abs_bottoms = []
-            # rel_bottoms = []
+            text_boxes = []
             for element in page_layout:
                 if isinstance(element, LTTextBoxHorizontal):
-                    # rel_left, rel_bottom, rel_width, rel_height = relative_coords(element.bbox, page_layout.bbox)
                     abs_bottoms.append(element.bbox[1])
-                    # rel_bottoms.append(rel_bottom)
-                    # if rel_bottom >= 0.87 or rel_bottom <= 0.095:
-                    #     out_fh.write(element.get_text() + " ")
-                    #     out_fh.write(str(element.bbox) + " ")
-                    #     out_fh.write(str(relative_coords(element.bbox, page_layout.bbox)) + "\n")
+                    text_boxes.append(element)
+            page_dict["ordered_texts"] = column_order(text_boxes, page_layout.bbox)
             if len(abs_bottoms) > 0:
                 page_dict["min_bottom"] = min(abs_bottoms)
                 page_dict["max_bottom"] = max(abs_bottoms)
-                page_dict["output"] += f'hi: {max(abs_bottoms)}, lo: {min(abs_bottoms)}\n'
-            # out_fh.write(f'hi: {max(abs_bottoms)}/{max(rel_bottoms)}, lo: {min(abs_bottoms)}/{min(rel_bottoms)}\n')
-                page_dict["output"] += f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n'
+                # page_dict["output"] += f'hi: {max(abs_bottoms)}, lo: {min(abs_bottoms)}\n'
+                # page_dict["output"] += f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n'
             yield page_dict
     return y_finder
 
 @cli.command('remove-top-bottom')
 def element_filter():
-    """Write texts except the elements that are at the top or bottom."""
+    """Write texts except the elements that are at the top or bottom.
+
+    This requires that in a previous step the top and bottom elements' y coordinates
+    were recorded."""
     def top_bottom_remover(iterator):
         for page_dict in iterator:
             if "min_bottom" in page_dict:
-                for element in page_dict["page"]:
-                    if isinstance(element, LTTextBoxHorizontal):
+                if "ordered_texts" in page_dict:
+                    for text_box in page_dict["ordered_texts"]:
                         # Add all text whose boundaries are between the bottom and top elements
-                        if page_dict["min_bottom"] < element.bbox[1] and element.bbox[3] < page_dict["max_bottom"]:
-                            page_dict["output"] += element.get_text() + "\n"
+                        if page_dict["min_bottom"] < text_box.bbox[1] and text_box.bbox[3] < page_dict["max_bottom"]:
+                            page_dict["output"] += text_box.get_text() + "\n"
+                else:
+                    for element in page_dict["page"]:
+                        if isinstance(element, LTTextBoxHorizontal):
+                            # Add all text whose boundaries are between the bottom and top elements
+                            if page_dict["min_bottom"] < element.bbox[1] and element.bbox[3] < page_dict["max_bottom"]:
+                                page_dict["output"] += element.get_text() + "\n"
             yield page_dict
     return top_bottom_remover
 
