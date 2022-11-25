@@ -30,9 +30,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Documentation = "https://github.com/unknown/archminer#readme"
-Issues = "https://github.com/unknown/archminer/issues"
-Source = "https://github.com/unknown/archminer"
+Documentation = "https://github.com/LeidenUniversityLibrary/archminer#readme"
+Issues = "https://github.com/LeidenUniversityLibrary/archminer/issues"
+Source = "https://github.com/LeidenUniversityLibrary/archminer"
 
 [project.scripts]
 archminer = "archminer.cli:cli"
