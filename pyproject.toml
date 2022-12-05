@@ -25,7 +25,8 @@ classifiers = [
 ]
 dependencies = [
   "click",
-  "pdfminer.six>=20220524"
+  "pdfminer.six>=20220524",
+  "shapely",
 ]
 dynamic = ["version"]
 

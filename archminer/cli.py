@@ -105,6 +105,18 @@ def find_top_bottom_elements():
             yield page_dict
     return y_finder
 
+@cli.command('detect-overlap')
+def detect_overlapping_boxes():
+    """Detect overlapping text boxes."""
+    from .layout import detect_overlap
+
+    def overlap_detector(iterator):
+        for page_dict in iterator:
+            if "ordered_texts" in page_dict:
+                detect_overlap(page_dict["ordered_texts"])
+            yield page_dict
+    return overlap_detector
+
 @cli.command('remove-top-bottom')
 def element_filter():
     """Write texts except the elements that are at the top or bottom.

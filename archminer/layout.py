@@ -3,6 +3,8 @@
 import logging
 LOG = logging.getLogger(__package__).getChild('layout')
 LOG.info("Init child logger")
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import MultiPolygon, box
 
 def relative_coords(bbox, page_bbox):
     """Return a tuple of coordinates relative to the page size."""
@@ -42,3 +44,15 @@ def column_order(boxes, page_bbox):
             else:
                 last_y_r = box.bbox[1]
     return left_boxes + right_boxes
+
+def detect_overlap(boxes) -> bool:
+    """Detect whether boxes overlap."""
+    polygons = []
+    for box_ in boxes:
+        b = box_.bbox
+        p = box(b[0], b[1], b[2], b[3])
+        polygons.append(p)
+    mp = MultiPolygon(polygons)
+    if not mp.is_valid:
+        LOG.warn("Overlapping boxes detected!")
+    return mp.is_valid
