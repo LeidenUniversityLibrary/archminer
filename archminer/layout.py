@@ -25,16 +25,17 @@ def column_order(boxes, page_bbox):
     LOG.debug(f'Last Y: {last_y_l}')
     page_middle = page_bbox[2] / 2
     for box in boxes:
+        w, h = round(box.bbox[2] - box.bbox[0], 2), round(box.bbox[3] - box.bbox[1], 2)
         if box.bbox[2] < page_middle:
             left_boxes.append(box)
-            LOG.debug(f"L {box.bbox}")
+            LOG.debug(f"L {box.bbox} ({w}, {h})")
             if box.bbox[1] > last_y_l:
                 LOG.warn(f"box out of vertical order: {box.bbox} > {last_y_l}")
             else:
                 last_y_l = box.bbox[1]
         else:
             right_boxes.append(box)
-            LOG.debug(f"R {box.bbox}")
+            LOG.debug(f"R {box.bbox} ({w}, {h})")
             if box.bbox[1] > last_y_r:
                 LOG.warn(f"box out of vertical order: {box.bbox} > {last_y_r}")
             else:
