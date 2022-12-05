@@ -26,7 +26,8 @@ def column_order(boxes, page_bbox):
     page_middle = page_bbox[2] / 2
     for box in boxes:
         w, h = round(box.bbox[2] - box.bbox[0], 2), round(box.bbox[3] - box.bbox[1], 2)
-        if box.bbox[2] < page_middle:
+        box_center = (box.bbox[2] + box.bbox[0])/2
+        if box_center < page_middle:
             left_boxes.append(box)
             LOG.debug(f"L {box.bbox} ({w}, {h})")
             if box.bbox[1] > last_y_l:
