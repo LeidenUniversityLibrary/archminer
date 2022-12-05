@@ -3,21 +3,39 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import click
 import pathlib
+import logging
+logging.getLogger('pdfminer').addHandler(logging.NullHandler())
+LOG = logging.getLogger(__package__)
+LOG.setLevel(logging.INFO)
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# add formatter to ch
+ch.setFormatter(formatter)
+# add ch to logger
+LOG.addHandler(ch)
+
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTTextBoxHorizontal, LAParams
 from .layout import column_order
+
 
 @click.group(chain=True, invoke_without_command=True)
 @click.option('--out-file', '-o', type=click.Path(path_type=pathlib.Path))
 @click.option('--from-page', type=int)
 @click.option('--to-page', type=int)
+@click.option('-v', '--verbose', is_flag=True, default=False)
 @click.argument('in-file', type=click.Path(exists=True, file_okay=True, path_type=pathlib.Path))
-def cli(in_file, out_file, from_page, to_page):
+def cli(in_file, out_file, from_page, to_page, verbose):
     """Mine the PDF!"""
     pass
 
 @cli.result_callback()
-def process(processors, in_file, out_file, from_page, to_page):
+def process(processors, in_file, out_file, from_page, to_page, verbose):
+    if verbose:
+        LOG.setLevel(logging.DEBUG)
     if from_page is not None and from_page > 0:
         processors.append(_high_pass(from_page))
     if to_page is not None and to_page > 0:
@@ -30,7 +48,6 @@ def process(processors, in_file, out_file, from_page, to_page):
         iterator = processor(iterator)
     if out_file is None:
         out_file = in_file.with_suffix('.txt')
-
     with out_file.open('w') as out_fh:
         for page_dict in iterator:
             out_fh.write(page_dict["output"])
@@ -93,6 +110,7 @@ def _high_pass(start_page: int):
     def page_filter(iterator):
         for page_dict in iterator:
             if page_dict["page"].pageid >= start_page:
+                LOG.debug(f"Processing page {page_dict['page'].pageid}")
                 yield page_dict
     return page_filter
 
