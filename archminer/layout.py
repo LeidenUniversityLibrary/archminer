@@ -32,17 +32,17 @@ def column_order(boxes, page_bbox):
         if box_center < page_middle:
             left_boxes.append(box)
             LOG.debug(f"L {box.bbox} ({w}, {h})")
-            if box.bbox[1] > last_y_l:
+            if box.bbox[3] > last_y_l:
                 LOG.warn(f"box out of vertical order: {box.bbox} > {last_y_l}")
             else:
-                last_y_l = box.bbox[1]
+                last_y_l = box.bbox[3]
         else:
             right_boxes.append(box)
             LOG.debug(f"R {box.bbox} ({w}, {h})")
-            if box.bbox[1] > last_y_r:
+            if box.bbox[3] > last_y_r:
                 LOG.warn(f"box out of vertical order: {box.bbox} > {last_y_r}")
             else:
-                last_y_r = box.bbox[1]
+                last_y_r = box.bbox[3]
     return left_boxes + right_boxes
 
 def detect_overlap(boxes) -> bool:
