@@ -26,23 +26,46 @@ from .layout import column_order
 @click.option('--out-file', '-o', type=click.Path(path_type=pathlib.Path))
 @click.option('--from-page', type=int)
 @click.option('--to-page', type=int)
+@click.option('--char-margin', type=float, default=2.0)
+@click.option('--word-margin', type=float, default=0.1)
+@click.option('--line-margin', type=float, default=0.5)
+@click.option('--line-overlap', type=float, default=0.5)
 @click.option('-v', '--verbose', is_flag=True, default=False)
 @click.argument('in-file', type=click.Path(exists=True, file_okay=True, path_type=pathlib.Path))
-def cli(in_file, out_file, from_page, to_page, verbose):
+def cli(in_file,
+        out_file,
+        from_page,
+        to_page,
+        char_margin,
+        word_margin,
+        line_margin,
+        line_overlap,
+        verbose):
     """Mine the PDF!"""
     pass
 
 @cli.result_callback()
-def process(processors, in_file, out_file, from_page, to_page, verbose):
+def process(processors: list,
+            in_file,
+            out_file,
+            from_page,
+            to_page,
+            char_margin,
+            word_margin,
+            line_margin,
+            line_overlap,
+            verbose):
     if verbose:
         LOG.setLevel(logging.DEBUG)
     if from_page is not None and from_page > 0:
-        processors.append(_high_pass(from_page))
+        processors.insert(0, _high_pass(from_page))
     if to_page is not None and to_page > 0:
-        processors.append(_low_pass(to_page))
+        processors.insert(1, _low_pass(to_page))
     if from_page is not None and to_page is not None and to_page < from_page:
         raise ValueError("to-page must be higher than from-page")
-    la_params = LAParams(boxes_flow=None)
+    la_params = LAParams(boxes_flow=None, line_overlap=line_overlap, char_margin=char_margin,
+                         line_margin=line_margin, word_margin=word_margin)
+    LOG.info("Using LAParams %s", la_params)
     iterator = (_wrap_page_in_dict(page) for page in extract_pages(in_file, laparams=la_params))
     for processor in processors:
         iterator = processor(iterator)
@@ -81,6 +104,18 @@ def find_top_bottom_elements():
                 # page_dict["output"] += f'hi - lo: {max(abs_bottoms) - min(abs_bottoms)}\n'
             yield page_dict
     return y_finder
+
+@cli.command('detect-overlap')
+def detect_overlapping_boxes():
+    """Detect overlapping text boxes."""
+    from .layout import detect_overlap
+
+    def overlap_detector(iterator):
+        for page_dict in iterator:
+            if "ordered_texts" in page_dict:
+                detect_overlap(page_dict["ordered_texts"])
+            yield page_dict
+    return overlap_detector
 
 @cli.command('remove-top-bottom')
 def element_filter():
