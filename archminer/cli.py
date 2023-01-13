@@ -48,19 +48,21 @@ def cli(in_file,
 def process(processors: list,
             in_file,
             out_file,
-            from_page,
-            to_page,
-            char_margin,
-            word_margin,
-            line_margin,
-            line_overlap,
-            verbose):
+            from_page: int,
+            to_page: int,
+            char_margin: float,
+            word_margin: float,
+            line_margin: float,
+            line_overlap: float,
+            verbose: bool):
     if verbose:
         LOG.setLevel(logging.DEBUG)
-    if from_page is not None and from_page > 0:
-        processors.insert(0, _high_pass(from_page))
     if to_page is not None and to_page > 0:
-        processors.insert(1, _low_pass(to_page))
+        LOG.info("Processing pages until page %d", to_page)
+        processors.insert(0, _low_pass(to_page))
+    if from_page is not None and from_page > 0:
+        LOG.info("Processing pages from page %d", from_page)
+        processors.insert(0, _high_pass(from_page))
     if from_page is not None and to_page is not None and to_page < from_page:
         raise ValueError("to-page must be higher than from-page")
     la_params = LAParams(boxes_flow=None, line_overlap=line_overlap, char_margin=char_margin,
